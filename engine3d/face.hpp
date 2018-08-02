@@ -26,7 +26,7 @@ public:
 
 	void set(PointF pt1, PointF pt2, PointF pt3)
 	{
-		vertices_.clear();
+		points_.clear();
 		pt1_ = pt1;
 		pt2_ = pt2;
 		pt3_ = pt3;
@@ -34,24 +34,24 @@ public:
 
 	void rasterize()
 	{
-		vertices_.clear();
+		points_.clear();
 		Utility::rasterize_triangle(
-			static_cast<Point>(pt1_), 
-			static_cast<Point>(pt2_), 
-			static_cast<Point>(pt3_), 
-			vertices_);
+			static_cast<PointI>(pt1_), 
+			static_cast<PointI>(pt2_), 
+			static_cast<PointI>(pt3_), 
+			points_);
 	}
 
 	void rasterize(PointF light, std::vector<double>& cosine)
 	{
-		vertices_.clear();
+		points_.clear();
 		cosine.clear();
 		Utility::rasterize_triangle(
 			light,
 			pt1_, pt1n_,
 			pt2_, pt2n_,
 			pt3_, pt3n_,
-			vertices_,
+			points_,
 			cosine );
 		return;
 	}
@@ -87,7 +87,7 @@ public:
 	PointF pt1_, pt2_, pt3_;
 	VectorF pt1n_, pt2n_, pt3n_;
 
-	std::vector<Point> vertices_;
+	std::vector<PointI> points_;
 };
 
 #endif

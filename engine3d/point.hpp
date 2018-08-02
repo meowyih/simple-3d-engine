@@ -7,13 +7,13 @@
 #include "matrix.hpp"
 
 
-class Point
+class PointI
 {
 public:
-	Point() {};
-	Point(int_fast32_t x, int_fast32_t y, int_fast32_t z) : x_(x), y_(y), z_(z) {}
+	PointI() {};
+	PointI(int_fast32_t x, int_fast32_t y, int_fast32_t z) : x_(x), y_(y), z_(z) {}
 
-	Point(const PointF& ptf)
+	PointI(const PointF& ptf)
 	{
 		x_ = (int_fast32_t)round(ptf.x());
 		y_ = (int_fast32_t)round(ptf.y());
@@ -35,9 +35,9 @@ public:
 	void y(int_fast32_t y) { y_ = y; }
 	void z(int_fast32_t z) { z_ = z; }
 
-	friend Point operator - (const Point& lhs, const Point& rhs)
+	friend PointI operator - (const PointI& lhs, const PointI& rhs)
 	{
-		Point ret(lhs.x_ - rhs.x_, lhs.y_ - rhs.y_, lhs.z_ - rhs.z_);
+		PointI ret(lhs.x_ - rhs.x_, lhs.y_ - rhs.y_, lhs.z_ - rhs.z_);
 		return ret;
 	}
 
