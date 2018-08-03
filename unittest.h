@@ -2,6 +2,7 @@
 
 #include "engine3d/pointf.hpp"
 #include "engine3d/face.hpp"
+#include "engine3d/mesh.hpp"
 
 class Sample_1
 {
@@ -62,4 +63,34 @@ private:
 private:
 	unsigned int rotate_degree_ = 0;
 	Face face_;
+};
+
+class Sample_3
+{
+private:
+  double pi_ = 3.1415926;
+
+public:
+
+  //Singleton
+  static Sample_3& get_instance()
+  {
+    static Sample_3 instance;
+    return instance;
+  }
+
+  // avoid accidentally copy
+  Sample_3(Sample_3 const&) = delete;
+  void operator = (Sample_3 const&) = delete;
+
+  // paint
+  void paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel);
+
+private:
+  Sample_3();
+  ~Sample_3() {}
+
+private:
+  unsigned int rotate_degree_ = 0;
+  Mesh mesh_;
 };

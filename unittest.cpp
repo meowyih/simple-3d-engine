@@ -198,3 +198,65 @@ void Sample_2::paintFace(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
 
   return;
 }
+
+Sample_3::Sample_3()
+{
+  // vertices for a cube
+  mesh_.init("monkey.json");
+  rotate_degree_ = 0;
+}
+
+void Sample_3::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
+{
+  // matrix
+  Matrix<double> scale_matrix(4, 4);
+  Matrix<double> translate_matrix(4, 4);
+  Matrix<double> rotate_matrixX(4, 4);
+  Matrix<double> rotate_matrixY(4, 4);
+  Matrix<double> rotate_matrixZ(4, 4);
+
+  // add one degree each time pain() has been called
+  rotate_degree_ += 1;
+  double radian = (rotate_degree_ % 360) * 2 * pi_ / 360;
+  Utility::set_rotateX(rotate_matrixX, -pi_/2.0);
+  Utility::set_rotateY(rotate_matrixY, radian);
+  Utility::set_rotateZ(rotate_matrixZ, 0);
+  Utility::set_scale(scale_matrix, 80);
+  Utility::set_translate(translate_matrix, 500, 300, 200);
+
+  // final matrix
+  Matrix<double> world_matrix =
+    scale_matrix * rotate_matrixX * rotate_matrixY * rotate_matrixZ * translate_matrix;
+
+  for (Face fc : mesh_.faces_ )
+  {
+    // re-calculate the face vertices
+    Face face = fc * world_matrix;
+
+    // draw triangle's edges
+    std::vector<PointI> lines;
+
+    Utility::bresenham3d(face.pt1_, face.pt2_, lines);
+    Utility::bresenham3d(face.pt1_, face.pt3_, lines);
+    Utility::bresenham3d(face.pt2_, face.pt3_, lines);
+
+    for (PointI pti : lines)
+    {
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        return;
+      }
+
+      // draw a white point RGB(255, 255, 255) on x and y 
+      int anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+      buf[anchor] = 0xFF;
+      buf[anchor + 1] = 0xFF;
+      buf[anchor + 2] = 0xFF;
+    }
+
+    lines.clear();
+  }
+
+  return;
+}
