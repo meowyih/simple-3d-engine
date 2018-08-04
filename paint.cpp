@@ -34,7 +34,12 @@ VOID  OnPaint(HDC hdc)
 	}
 
 	// sample code 
-	Sample_1::get_instance().paint( buffer, width, height, bytesPerPixel);
+	// Sample_1::get_instance().paintCubePoints(buffer, width, height, bytesPerPixel);
+	// Sample_1::get_instance().paintCubeLines( buffer, width, height, bytesPerPixel);
+	// Sample_2::get_instance().paintFace(buffer, width, height, bytesPerPixel);
+  // Sample_3::get_instance().paintMesh(buffer, width, height, bytesPerPixel);
+  // Sample_4::get_instance().paintMesh(buffer, width, height, bytesPerPixel);
+  Sample_5::get_instance().paintMesh(buffer, width, height, bytesPerPixel);
 
 	// update the screen with buffer
 	BITMAPINFOHEADER bih;

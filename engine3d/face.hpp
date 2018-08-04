@@ -42,17 +42,15 @@ public:
 			points_);
 	}
 
-	void rasterize(PointF light, std::vector<double>& cosine)
+	void rasterize(PointF light)
 	{
 		points_.clear();
-		cosine.clear();
 		Utility::rasterize_triangle(
 			light,
 			pt1_, pt1n_,
 			pt2_, pt2n_,
 			pt3_, pt3n_,
-			points_,
-			cosine );
+			points_ );
 		return;
 	}
 

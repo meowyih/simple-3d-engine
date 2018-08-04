@@ -4,14 +4,19 @@
 #include <cstdint>
 
 #include "pointf.hpp"
+#include "vectorf.hpp"
 #include "matrix.hpp"
-
 
 class PointI
 {
 public:
+  static const int_fast32_t COS_PRECISENESS = 100000;
+public:
 	PointI() {};
 	PointI(int_fast32_t x, int_fast32_t y, int_fast32_t z) : x_(x), y_(y), z_(z) {}
+  PointI(int_fast32_t x, int_fast32_t y, int_fast32_t z, int_fast32_t cos ) : x_(x), y_(y), z_(z), cos_(cos) {}
+
+  PointI(const PointI& rhs) : x_(rhs.x_), y_(rhs.y_), z_(rhs.z_), cos_(rhs.cos_) {}
 
 	PointI(const PointF& ptf)
 	{
@@ -43,6 +48,10 @@ public:
 
 public:
 	int_fast32_t x_, y_, z_;
+
+  // Phong shading usage, cosine value times 1000
+  // this value should between -1000 to 1000
+  int_fast32_t cos_; 
 };
 
 

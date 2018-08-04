@@ -153,17 +153,20 @@ public:
     PointI double_delta(abs_delta.x_ << 1, abs_delta.y_ << 1, abs_delta.z_ << 1);
 
     int_fast32_t x_inc, y_inc, z_inc;
-
-    out.reserve(abs_delta.x_ + abs_delta.y_);
+    int_fast32_t cos_cur = pt1.cos_;
+    int_fast32_t delta_cos = pt2.cos_ - pt1.cos_;
 
     x_inc = (delta.x_ < 0) ? -1 : 1;
     y_inc = (delta.y_ < 0) ? -1 : 1;
     z_inc = (delta.z_ < 0) ? -1 : 1;
 
-    if (abs_delta.x_ >= abs_delta.y_)
+    if (abs_delta.x_ >= abs_delta.y_ && abs_delta.x_ >= abs_delta.z_)
     {
       int_fast32_t err_1 = double_delta.y_ - abs_delta.x_;
       int_fast32_t err_2 = double_delta.z_ - abs_delta.x_;
+      int_fast32_t cos_inc = ( abs_delta.x_ == 0 ) ? 0 : (delta_cos / abs_delta.x_);
+
+      out.reserve(abs_delta.x_ + 1);
 
       for (int_fast32_t i = 0; i < abs_delta.x_; i++)
       {
@@ -185,12 +188,17 @@ public:
         err_2 += double_delta.z_;
 
         pos.x_ += x_inc;
+        cos_cur += cos_inc;
+        pos.cos_ = cos_cur;
       }
     }
-    else // if (abs_delta.y_ >= abs_delta.x_)
+    else if (abs_delta.y_ >= abs_delta.x_ && abs_delta.y_ >= abs_delta.z_)
     {
       int_fast32_t err_1 = double_delta.x_ - abs_delta.y_;
       int_fast32_t err_2 = double_delta.z_ - abs_delta.y_;
+      int_fast32_t cos_inc = (abs_delta.y_ == 0) ? 0 : (delta_cos / abs_delta.y_);
+
+      out.reserve(abs_delta.y_ + 1);
 
       for (int_fast32_t i = 0; i < abs_delta.y_; i++)
       {
@@ -212,9 +220,56 @@ public:
         err_2 += double_delta.z_;
 
         pos.y_ += y_inc;
+        cos_cur += cos_inc;
+        pos.cos_ = cos_cur;
+      }
+    }
+    else
+    {
+      int_fast32_t err_1 = double_delta.y_ - abs_delta.z_;
+      int_fast32_t err_2 = double_delta.x_ - abs_delta.z_;
+      int_fast32_t cos_inc = (abs_delta.z_ == 0) ? 0 : (delta_cos / abs_delta.z_);
+
+      // create a point to store previous PointI in out
+      PointI lastpos(pt1);
+      pt1.x_++; // just make is different from pt1
+
+      (delta.x_ > delta.y_) ? out.reserve(abs_delta.x_ + 1) : out.reserve(abs_delta.y_ + 1);
+
+      for (int_fast32_t i = 0; i < abs_delta.z_; i++)
+      {
+        if (lastpos.x_ == pt1.x_ && lastpos.y_ == pos.y_)
+        {
+          // if x, y are the same, we don't have to store the pixel
+        }
+        else
+        {
+          out.push_back(pos);
+          lastpos = pos;
+        }
+
+        if (err_1 > 0)
+        {
+          pos.y_ += y_inc;
+          err_1 -= double_delta.z_;
+        }
+
+        if (err_2 > 0)
+        {
+          pos.x_ += x_inc;
+          err_2 -= double_delta.z_;
+        }
+
+        err_1 += double_delta.y_;
+        err_2 += double_delta.x_;
+
+        pos.z_ += z_inc;
+        cos_cur += cos_inc;
+        pos.cos_ = cos_cur;
       }
     }
 
+    pos.cos_ = pt2.cos_;
     out.push_back(pos);
   }
 
@@ -597,8 +652,7 @@ public:
     PointI pt1, VectorF pt1n,
     PointI pt2, VectorF pt2n,
     PointI pt3, VectorF pt3n,
-    std::vector<PointI>& out,
-    std::vector<double>& cosine)
+    std::vector<PointI>& out)
   {
     PointI top, middle, bottom;
     VectorF top_n, middle_n, bottom_n;
@@ -688,6 +742,10 @@ public:
     middle_c = VectorF::cosine(middle_light, middle_n);
     bottom_c = VectorF::cosine(bottom_light, bottom_n);
 
+    top.cos_ = (int_fast32_t)(top_c * PointI::COS_PRECISENESS);
+    middle.cos_ = (int_fast32_t)(middle_c * PointI::COS_PRECISENESS);
+    bottom.cos_ = (int_fast32_t)(bottom_c * PointI::COS_PRECISENESS);
+
     // horizontal line
     if (top.x_ == middle.x_ && middle.x_ == bottom.x_)
     {
@@ -728,13 +786,6 @@ public:
 
       bresenham2d2(pt_ymin, pt_ymax, out);
 
-      for (PointI pt : out)
-      {
-        double gradient1 = gradient(pt_ymin, pt_ymax, pt);
-        double cos = interpolation(pt_ymin_c, pt_ymax_c, gradient1);
-        cosine.push_back(cos);
-      }
-
       return;
     }
 
@@ -773,23 +824,25 @@ public:
       while (it2 != vertices_top_middle.end() && it1 != vertices_top_bottom.end())
       {
         // calculate ymax and ymin in x_cur
-        int_fast32_t ymax, ymin, zmax, zmin;
+        int_fast32_t ymax, ymin, zmax, zmin, cosmax, cosmin;
         bool ymax_is_it1;
         if (it1->y_ > it2->y_)
         {
-          ymax_is_it1 = true;
           ymax = it1->y_;
           ymin = it2->y_;
           zmax = it1->z_;
           zmin = it2->z_;
+          cosmax = it1->cos_;
+          cosmin = it2->cos_;
         }
         else
         {
-          ymax_is_it1 = false;
           ymax = it2->y_;
           ymin = it1->y_;
           zmax = it2->z_;
           zmin = it1->z_;
+          cosmax = it2->cos_;
+          cosmin = it1->cos_;
         }
 
         // find next it1->x_ == it2->x_ == x_cur
@@ -799,14 +852,15 @@ public:
           {
             if (it1->y_ > ymax)
             {
-              ymax_is_it1 = true;
               ymax = it1->y_;
               zmax = it1->z_;
+              cosmax = it1->cos_;
             }
             if (it1->y_ < ymin)
             {
               ymin = it1->y_;
               zmin = it1->z_;
+              cosmin = it1->cos_;
             }
           }
           else // if (it1->x_ == x_cur - 1)
@@ -825,11 +879,13 @@ public:
               ymax_is_it1 = false;
               ymax = it2->y_;
               zmax = it2->z_;
+              cosmax = it2->cos_;
             }
             if (it2->y_ < ymin)
             {
               ymin = it2->y_;
               zmin = it2->z_;
+              cosmin = it2->cos_;
             }
           }
           else // if (it2->x_ == x_cur - 1)
@@ -840,49 +896,7 @@ public:
         }
 
         std::vector<PointI> points;
-        bresenham2d2(PointI(x_cur, ymin, zmin), PointI(x_cur, ymax, zmax), points);
-
-        double gradient1, gradient2;
-
-        if (ymax_is_it1)
-        {
-          gradient1 = gradient(top, bottom, PointI(x_cur, ymax, zmax));
-          gradient2 = gradient(top, middle, PointI(x_cur, ymin, zmin));
-        }
-        else
-        {
-          gradient1 = gradient(top, bottom, PointI(x_cur, ymin, zmin));
-          gradient2 = gradient(top, middle, PointI(x_cur, ymax, zmax));
-        }
-
-        double start_c = interpolation(top_c, bottom_c, gradient1);
-        double end_c = interpolation(top_c, middle_c, gradient2);        
-
-        for (PointI pt : points)
-        {
-          double gradient;
-          
-          if (ymax_is_it1)
-          {
-            gradient = 
-              (pt.y_ == ymax ? 1 : (ymin*1.0 - pt.y_*1.0) / (ymin*1.0 - ymax*1.0));
-          }
-          else
-          {
-            gradient =
-              (pt.y_ == ymin ? 1 : (ymax*1.0 - pt.y_*1.0) / (ymax*1.0 - ymin * 1.0));
-          }
-
-          if (gradient > 1)
-          {
-            gradient = 1;
-          }
-
-          double cos = interpolation(start_c, end_c, gradient);
-
-          cosine.push_back(cos);
-        }
-
+        bresenham2d2(PointI(x_cur, ymin, zmin, cosmin), PointI(x_cur, ymax, zmax, cosmax), points);
         out.insert(out.end(), points.begin(), points.end());
         x_cur--;
       }
@@ -901,23 +915,24 @@ public:
       while (it3 != vertices_middle_bottom.end() && it1 != vertices_top_bottom.end())
       {
         // calculate ymax and ymin in x_cur
-        int_fast32_t ymax, ymin, zmax, zmin;
-        bool ymax_is_it1;
+        int_fast32_t ymax, ymin, zmax, zmin, cosmax, cosmin;
         if (it1->y_ > it3->y_)
         {
-          ymax_is_it1 = true;
           ymax = it1->y_;
           ymin = it3->y_;
           zmax = it1->z_;
           zmin = it3->z_;
+          cosmax = it1->cos_;
+          cosmin = it3->cos_;
         }
         else
         {
-          ymax_is_it1 = false;
           ymax = it3->y_;
           ymin = it1->y_;
           zmax = it3->z_;
           zmin = it1->z_;
+          cosmax = it3->cos_;
+          cosmin = it1->cos_;
         }
 
         // find next it1->x_ == it2->x_ == x_cur
@@ -927,14 +942,15 @@ public:
           {
             if (it1->y_ > ymax)
             {
-              ymax_is_it1 = true;
               ymax = it1->y_;
               zmax = it1->z_;
+              cosmax = it1->cos_;
             }
             if (it1->y_ < ymin)
             {
               ymin = it1->y_;
               zmin = it1->z_;
+              cosmin = it1->cos_;
             }
           }
           else // if (it1->x_ == x_cur - 1)
@@ -950,14 +966,15 @@ public:
           {
             if (it3->y_ > ymax)
             {
-              ymax_is_it1 = false;
               ymax = it3->y_;
               zmax = it3->z_;
+              cosmax = it3->cos_;
             }
             if (it3->y_ < ymin)
             {
               ymin = it3->y_;
               zmin = it3->z_;
+              cosmin = it3->cos_;
             }
           }
           else // if (it3->x_ == x_cur - 1)
@@ -968,43 +985,7 @@ public:
         }
 
         std::vector<PointI> points;
-        bresenham2d2(PointI(x_cur, ymin, zmin), PointI(x_cur, ymax, zmax), points);
-
-        double gradient1, gradient3;
-
-        if (ymax_is_it1)
-        {
-          gradient1 = gradient(top, bottom, PointI(x_cur, ymax, zmax));
-          gradient3 = gradient(middle, bottom, PointI(x_cur, ymin, zmin));
-        }
-        else
-        {
-          gradient1 = gradient(top, bottom, PointI(x_cur, ymin, zmin));
-          gradient3 = gradient(middle, bottom, PointI(x_cur, ymax, zmax));
-        }
-
-        double start_c = interpolation(top_c, bottom_c, gradient1);
-        double end_c = interpolation(middle_c, bottom_c, gradient3);
-
-        for (PointI pt : points)
-        {
-          double gradient;
-          
-          if (ymax_is_it1)
-          {
-            gradient =
-              (pt.y_ == ymax ? 1 : (ymin*1.0 - pt.y_*1.0) / (ymin*1.0 - ymax * 1.0));
-          }
-          else
-          {
-            gradient =
-              (pt.y_ == ymin ? 1 : (ymax*1.0 - pt.y_*1.0) / (ymax*1.0 - ymin * 1.0));
-          }
-
-          double cos = interpolation(start_c, end_c, gradient);
-          cosine.push_back(cos);
-        }
-
+        bresenham2d2(PointI(x_cur, ymin, zmin, cosmin), PointI(x_cur, ymax, zmax, cosmax), points);
         out.insert(out.end(), points.begin(), points.end());
         x_cur--;
       }

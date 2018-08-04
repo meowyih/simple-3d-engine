@@ -406,10 +406,6 @@ void Sample_4::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
       buf[anchor + 2] = (int)(255 * cos_abd_light);
     }
   }
-  else
-  {
-    int x = 0;
-  }
 
   // draw acd
   if (cos_acd_light > 0)
@@ -440,10 +436,6 @@ void Sample_4::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
       buf[anchor + 1] = (int)(255 * cos_acd_light);
       buf[anchor + 2] = (int)(255 * cos_acd_light);
     }
-  }
-  else
-  {
-    int x = 0;
   }
 
   // draw bcd
@@ -499,7 +491,7 @@ void Sample_5::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
   int_fast32_t* zbuffer = new int_fast32_t[width * height];
 
   // memset(zbuffer, 0, sizeof(int_fast32_t) * (width * height));
-  for (size_t idx = 0; idx < width * height; idx++)
+  for (size_t idx = 0; idx < (size_t)(width * height); idx++)
   {
     zbuffer[idx] = -999999999;
   }
@@ -532,18 +524,18 @@ void Sample_5::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
     // re-calculate the face vertices
     Face face = fc * world_matrix;
     std::vector<PointI> out;
-    std::vector<double> cosine;
 
-    Utility::rasterize_triangle(light, 
+    Utility::rasterize_triangle(
+      light, 
       face.pt1_, face.pt1n_,
       face.pt2_, face.pt2n_,
       face.pt3_, face.pt3n_, 
-      out, cosine);
+      out);
 
     for ( size_t idx = 0; idx < out.size(); idx ++ )
     {
       PointI pti = out.at(idx);
-      double cos = cosine.at(idx);
+      double cos = pti.cos_ * 1.0 / PointI::COS_PRECISENESS;
 
       // ignore the point if outside the screen 
       if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
