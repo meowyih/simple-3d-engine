@@ -245,7 +245,7 @@ void Sample_3::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
       // ignore the point if outside the screen 
       if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
       {
-        return;
+        continue;
       }
 
       // draw a white point RGB(255, 255, 255) on x and y 
@@ -258,5 +258,320 @@ void Sample_3::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
     lines.clear();
   }
 
+  return;
+}
+
+Sample_4::Sample_4()
+{
+  // init 4 faces
+  PointF pta(0, 0, 0);
+  PointF ptb(1, 0, 0);
+  PointF ptc(0, 1, 0);
+  PointF ptd(0, 0, 1);
+
+  abc_.set(pta, ptb, ptc);
+  abd_.set(pta, ptb, ptd);
+  acd_.set(pta, ptc, ptd);
+  bcd_.set(ptb, ptc, ptd);
+
+  n_abc_.set(0, 0, -1);
+  n_abd_.set(0, -1, 0);
+  n_acd_.set(-1, 0, 0);
+  n_bcd_.set(1, 1, 1);
+
+  rotate_degree_ = 0;
+}
+
+PointF Sample_4::center(Face face)
+{
+  return PointF(
+      (face.pt1_.x_ + face.pt2_.x_ + face.pt3_.x_) / 3.0,
+      (face.pt1_.y_ + face.pt2_.y_ + face.pt3_.y_) / 3.0,
+      (face.pt1_.z_ + face.pt2_.z_ + face.pt3_.z_) / 3.0
+    );
+}
+
+void Sample_4::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
+{
+  // z buf
+  int_fast32_t* zbuf = new int_fast32_t[width * height];
+  
+  memset(zbuf, 0, sizeof(int_fast32_t) * (width * height));
+
+  // matrix
+  Matrix<double> scale_matrix(4, 4);
+  Matrix<double> translate_matrix(4, 4);
+  Matrix<double> rotate_matrixX(4, 4);
+  Matrix<double> rotate_matrixY(4, 4);
+  Matrix<double> rotate_matrixZ(4, 4);
+
+  // add one degree each time pain() has been called
+  rotate_degree_ += 1;
+  double radian = (rotate_degree_ % 360) * 2 * pi_ / 360;
+  Utility::set_rotateX(rotate_matrixX, radian);
+  Utility::set_rotateY(rotate_matrixY, radian);
+  Utility::set_rotateZ(rotate_matrixZ, radian);
+  Utility::set_scale(scale_matrix, 150);
+  Utility::set_translate(translate_matrix, 500, 300, 600);
+
+  // final matrix
+  Matrix<double> world_matrix =
+    scale_matrix * rotate_matrixX * rotate_matrixY * rotate_matrixZ * translate_matrix;
+
+  // light position
+  PointF light(500, 300, 1000);
+
+  // 4 faces
+  Face abc = abc_ * world_matrix;
+  Face abd = abd_ * world_matrix;
+  Face acd = acd_ * world_matrix;
+  Face bcd = bcd_ * world_matrix;
+
+  // the normal for 4 faces
+  VectorF n_abc = VectorF::normalize(n_abc_ * world_matrix);
+  VectorF n_abd = VectorF::normalize(n_abd_ * world_matrix);
+  VectorF n_acd = VectorF::normalize(n_acd_ * world_matrix);
+  VectorF n_bcd = VectorF::normalize(n_bcd_ * world_matrix);
+
+  // vector from center of the faces and light
+  VectorF abc_light = VectorF::normalize(light - center(abc));
+  VectorF abd_light = VectorF::normalize(light - center(abd));
+  VectorF acd_light = VectorF::normalize(light - center(acd));
+  VectorF bcd_light = VectorF::normalize(light - center(bcd));
+
+  // cos sita between light and normal
+  double cos_abc_light = VectorF::cosine(abc_light, n_abc);
+  double cos_abd_light = VectorF::cosine(abd_light, n_abd);
+  double cos_acd_light = VectorF::cosine(acd_light, n_acd);
+  double cos_bcd_light = VectorF::cosine(bcd_light, n_bcd);
+
+  // draw abc
+  if (cos_abc_light > 0)
+  {
+    abc.rasterize();
+
+    for (PointI pti : abc.points_)
+    {
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        continue;
+      }
+
+      // ignore the point if there is other point in front of it
+      if (pti.z_ < zbuf[pti.y_ * width + pti.x_])
+      {
+        continue;
+      }
+      else
+      {
+        zbuf[pti.y_ * width + pti.x_] = pti.z_;
+      }
+
+      // draw
+      int anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+      buf[anchor] = (int)(255 * cos_abc_light);
+      buf[anchor + 1] = (int)(255 * cos_abc_light);
+      buf[anchor + 2] = (int)(255 * cos_abc_light);
+    }
+  }
+
+  // draw abd
+  if (cos_abd_light > 0)
+  {
+    abd.rasterize();
+
+    for (PointI pti : abd.points_)
+    {
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        continue;
+      }
+
+      // ignore the point if there is other point in front of it
+      if (pti.z_ < zbuf[pti.y_ * width + pti.x_])
+      {
+        continue;
+      }
+      else
+      {
+        zbuf[pti.y_ * width + pti.x_] = pti.z_;
+      }
+
+      // draw
+      int anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+      buf[anchor] = (int)(255 * cos_abd_light);
+      buf[anchor + 1] = (int)(255 * cos_abd_light);
+      buf[anchor + 2] = (int)(255 * cos_abd_light);
+    }
+  }
+  else
+  {
+    int x = 0;
+  }
+
+  // draw acd
+  if (cos_acd_light > 0)
+  {
+    acd.rasterize();
+
+    for (PointI pti : acd.points_)
+    {
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        continue;
+      }
+
+      // ignore the point if there is other point in front of it
+      if (pti.z_ < zbuf[pti.y_ * width + pti.x_])
+      {
+        continue;
+      }
+      else
+      {
+        zbuf[pti.y_ * width + pti.x_] = pti.z_;
+      }
+
+      // draw
+      int anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+      buf[anchor] = (int)(255 * cos_acd_light);
+      buf[anchor + 1] = (int)(255 * cos_acd_light);
+      buf[anchor + 2] = (int)(255 * cos_acd_light);
+    }
+  }
+  else
+  {
+    int x = 0;
+  }
+
+  // draw bcd
+  if (cos_bcd_light > 0)
+  {
+    bcd.rasterize();
+
+    for (PointI pti : bcd.points_)
+    {
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        continue;
+      }
+
+      // ignore the point if there is other point in front of it
+      if (pti.z_ < zbuf[pti.y_ * width + pti.x_])
+      {
+        continue;
+      }
+      else
+      {
+        zbuf[pti.y_ * width + pti.x_] = pti.z_;
+      }
+
+      // draw
+      int anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+      buf[anchor] = (int)(255 * cos_bcd_light);
+      buf[anchor + 1] = (int)(255 * cos_bcd_light);
+      buf[anchor + 2] = (int)(255 * cos_bcd_light);
+    }
+  }
+  else
+  {
+    int x = 0;
+  }
+
+  delete [] zbuf;
+
+  return;
+}
+
+Sample_5::Sample_5()
+{
+  // vertices for a cube
+  mesh_.init("monkey.json");
+  rotate_degree_ = 0;
+}
+
+void Sample_5::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
+{
+  // z buffer
+  int_fast32_t* zbuffer = new int_fast32_t[width * height];
+
+  // memset(zbuffer, 0, sizeof(int_fast32_t) * (width * height));
+  for (size_t idx = 0; idx < width * height; idx++)
+  {
+    zbuffer[idx] = -999999999;
+  }
+
+  // light 
+  PointF light(900, 300, 1000);
+
+  // matrix
+  Matrix<double> scale_matrix(4, 4);
+  Matrix<double> translate_matrix(4, 4);
+  Matrix<double> rotate_matrixX(4, 4);
+  Matrix<double> rotate_matrixY(4, 4);
+  Matrix<double> rotate_matrixZ(4, 4);
+
+  // add one degree each time pain() has been called
+  rotate_degree_ += 1;
+  double radian = (rotate_degree_ % 360) * 2 * pi_ / 360;
+  Utility::set_rotateX(rotate_matrixX, -pi_ / 2.0);
+  Utility::set_rotateY(rotate_matrixY, radian);
+  Utility::set_rotateZ(rotate_matrixZ, 0);
+  Utility::set_scale(scale_matrix, 200);
+  Utility::set_translate(translate_matrix, 500, 300, 0);
+
+  // final matrix
+  Matrix<double> world_matrix =
+    scale_matrix * rotate_matrixX * rotate_matrixY * rotate_matrixZ * translate_matrix;
+
+  for (Face fc : mesh_.faces_)
+  {
+    // re-calculate the face vertices
+    Face face = fc * world_matrix;
+    std::vector<PointI> out;
+    std::vector<double> cosine;
+
+    Utility::rasterize_triangle(light, 
+      face.pt1_, face.pt1n_,
+      face.pt2_, face.pt2n_,
+      face.pt3_, face.pt3n_, 
+      out, cosine);
+
+    for ( size_t idx = 0; idx < out.size(); idx ++ )
+    {
+      PointI pti = out.at(idx);
+      double cos = cosine.at(idx);
+
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        continue;
+      }
+
+      if (pti.z_ < zbuffer[pti.y_ * width + pti.x_])
+      {
+        continue;
+      }
+      else
+      {
+        zbuffer[pti.y_ * width + pti.x_] = pti.z_;
+      }
+
+      // draw a white point RGB(255, 255, 255) on x and y 
+      int anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+
+      if ( cos > 0 )
+      {      
+        buf[anchor] = (int)(255 * cos);
+        buf[anchor + 1] = (int)(255 * cos);
+        buf[anchor + 2] = (int)(255 * cos);
+      }
+    }
+  }
+
+  delete zbuffer;
   return;
 }

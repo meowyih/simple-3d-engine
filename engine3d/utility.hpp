@@ -593,14 +593,14 @@ public:
   }
 
   inline static void rasterize_triangle(
-    PointF light,
-    PointF pt1, VectorF pt1n,
-    PointF pt2, VectorF pt2n,
-    PointF pt3, VectorF pt3n,
+    PointI light,
+    PointI pt1, VectorF pt1n,
+    PointI pt2, VectorF pt2n,
+    PointI pt3, VectorF pt3n,
     std::vector<PointI>& out,
     std::vector<double>& cosine)
   {
-    PointF top, middle, bottom;
+    PointI top, middle, bottom;
     VectorF top_n, middle_n, bottom_n;
     double top_c, middle_c, bottom_c;
 
@@ -668,9 +668,21 @@ public:
     }
 
     // calculate the cos sita value between line and three vertices
-    VectorF top_light = VectorF::normalize(light - top);
-    VectorF middle_light = VectorF::normalize(light - middle);
-    VectorF bottom_light = VectorF::normalize(light - bottom);
+    PointF delta_light_top(
+      light.x_ - top.x_, 
+      light.y_ - top.y_, 
+      light.z_ - top.z_);
+    PointF delta_light_middle(
+      light.x_ - middle.x_, 
+      light.y_ - middle.y_, 
+      light.z_ - middle.z_);
+    PointF delta_light_bottom(
+      light.x_ - bottom.x_, 
+      light.y_ - bottom.y_, 
+      light.z_ - bottom.z_);
+    VectorF top_light = VectorF::normalize(delta_light_top);
+    VectorF middle_light = VectorF::normalize(delta_light_middle);
+    VectorF bottom_light = VectorF::normalize(delta_light_bottom);
 
     top_c = VectorF::cosine(top_light, top_n);
     middle_c = VectorF::cosine(middle_light, middle_n);
@@ -679,7 +691,7 @@ public:
     // horizontal line
     if (top.x_ == middle.x_ && middle.x_ == bottom.x_)
     {
-      PointF pt_ymin, pt_ymax;
+      PointI pt_ymin, pt_ymax;
       double pt_ymin_c, pt_ymax_c;
 
       if (top.y_ >= middle.y_ && top.y_ >= bottom.y_)
@@ -714,13 +726,11 @@ public:
         pt_ymin_c = bottom_c;
       }
 
-      PointI pt_start(pt_ymin);
-      PointI pt_end(pt_ymax);
-      bresenham2d2(pt_start, pt_end, out);
+      bresenham2d2(pt_ymin, pt_ymax, out);
 
       for (PointI pt : out)
       {
-        double gradient1 = gradient(pt_ymin, pt_ymax, PointF(pt.x_, pt.y_, pt.z_));
+        double gradient1 = gradient(pt_ymin, pt_ymax, pt);
         double cos = interpolation(pt_ymin_c, pt_ymax_c, gradient1);
         cosine.push_back(cos);
       }
@@ -764,8 +774,10 @@ public:
       {
         // calculate ymax and ymin in x_cur
         int_fast32_t ymax, ymin, zmax, zmin;
+        bool ymax_is_it1;
         if (it1->y_ > it2->y_)
         {
+          ymax_is_it1 = true;
           ymax = it1->y_;
           ymin = it2->y_;
           zmax = it1->z_;
@@ -773,6 +785,7 @@ public:
         }
         else
         {
+          ymax_is_it1 = false;
           ymax = it2->y_;
           ymin = it1->y_;
           zmax = it2->z_;
@@ -786,6 +799,7 @@ public:
           {
             if (it1->y_ > ymax)
             {
+              ymax_is_it1 = true;
               ymax = it1->y_;
               zmax = it1->z_;
             }
@@ -808,6 +822,7 @@ public:
           {
             if (it2->y_ > ymax)
             {
+              ymax_is_it1 = false;
               ymax = it2->y_;
               zmax = it2->z_;
             }
@@ -820,24 +835,43 @@ public:
           else // if (it2->x_ == x_cur - 1)
           {
             break;
-      }
+          }
           it2++;
-    }
+        }
 
         std::vector<PointI> points;
+        bresenham2d2(PointI(x_cur, ymin, zmin), PointI(x_cur, ymax, zmax), points);
 
-        double gradient1 = gradient(top, bottom, PointF(it1->x_, it1->y_, it1->z_));
-        double gradient2 = gradient(top, middle, PointF(it2->x_, it2->y_, it2->z_));
+        double gradient1, gradient2;
+
+        if (ymax_is_it1)
+        {
+          gradient1 = gradient(top, bottom, PointI(x_cur, ymax, zmax));
+          gradient2 = gradient(top, middle, PointI(x_cur, ymin, zmin));
+        }
+        else
+        {
+          gradient1 = gradient(top, bottom, PointI(x_cur, ymin, zmin));
+          gradient2 = gradient(top, middle, PointI(x_cur, ymax, zmax));
+        }
 
         double start_c = interpolation(top_c, bottom_c, gradient1);
-        double end_c = interpolation(top_c, middle_c, gradient2);
-
-        bresenham2d2(PointI(x_cur, ymin, zmin), PointI(x_cur, ymax, zmax), points);
+        double end_c = interpolation(top_c, middle_c, gradient2);        
 
         for (PointI pt : points)
         {
-          double gradient =
-            (pt.y_ == it1->y_ ? 1 : (it2->y_*1.0 - pt.y_*1.0) / (it2->y_*1.0 - it1->y_*1.0));
+          double gradient;
+          
+          if (ymax_is_it1)
+          {
+            gradient = 
+              (pt.y_ == ymax ? 1 : (ymin*1.0 - pt.y_*1.0) / (ymin*1.0 - ymax*1.0));
+          }
+          else
+          {
+            gradient =
+              (pt.y_ == ymin ? 1 : (ymax*1.0 - pt.y_*1.0) / (ymax*1.0 - ymin * 1.0));
+          }
 
           if (gradient > 1)
           {
@@ -868,8 +902,10 @@ public:
       {
         // calculate ymax and ymin in x_cur
         int_fast32_t ymax, ymin, zmax, zmin;
+        bool ymax_is_it1;
         if (it1->y_ > it3->y_)
         {
+          ymax_is_it1 = true;
           ymax = it1->y_;
           ymin = it3->y_;
           zmax = it1->z_;
@@ -877,6 +913,7 @@ public:
         }
         else
         {
+          ymax_is_it1 = false;
           ymax = it3->y_;
           ymin = it1->y_;
           zmax = it3->z_;
@@ -890,6 +927,7 @@ public:
           {
             if (it1->y_ > ymax)
             {
+              ymax_is_it1 = true;
               ymax = it1->y_;
               zmax = it1->z_;
             }
@@ -912,6 +950,7 @@ public:
           {
             if (it3->y_ > ymax)
             {
+              ymax_is_it1 = false;
               ymax = it3->y_;
               zmax = it3->z_;
             }
@@ -929,19 +968,38 @@ public:
         }
 
         std::vector<PointI> points;
+        bresenham2d2(PointI(x_cur, ymin, zmin), PointI(x_cur, ymax, zmax), points);
 
-        double gradient1 = gradient(top, bottom, PointF(it1->x_, it1->y_, it1->z_));
-        double gradient3 = gradient(middle, bottom, PointF(it3->x_, it3->y_, it3->z_));
+        double gradient1, gradient3;
+
+        if (ymax_is_it1)
+        {
+          gradient1 = gradient(top, bottom, PointI(x_cur, ymax, zmax));
+          gradient3 = gradient(middle, bottom, PointI(x_cur, ymin, zmin));
+        }
+        else
+        {
+          gradient1 = gradient(top, bottom, PointI(x_cur, ymin, zmin));
+          gradient3 = gradient(middle, bottom, PointI(x_cur, ymax, zmax));
+        }
 
         double start_c = interpolation(top_c, bottom_c, gradient1);
         double end_c = interpolation(middle_c, bottom_c, gradient3);
 
-        bresenham2d2(PointI(x_cur, ymin, zmin), PointI(x_cur, ymax, zmax), points);
-
         for (PointI pt : points)
         {
-          double gradient =
-            (pt.y_ == it1->y_ ? 1 : (it3->y_*1.0 - pt.y_*1.0) / (it3->y_*1.0 - it1->y_*1.0));
+          double gradient;
+          
+          if (ymax_is_it1)
+          {
+            gradient =
+              (pt.y_ == ymax ? 1 : (ymin*1.0 - pt.y_*1.0) / (ymin*1.0 - ymax * 1.0));
+          }
+          else
+          {
+            gradient =
+              (pt.y_ == ymin ? 1 : (ymax*1.0 - pt.y_*1.0) / (ymax*1.0 - ymin * 1.0));
+          }
 
           double cos = interpolation(start_c, end_c, gradient);
           cosine.push_back(cos);
@@ -951,6 +1009,7 @@ public:
         x_cur--;
       }
     }
+
   }
 
   static double interpolation(double v1, double v2, double gradient)
@@ -958,10 +1017,10 @@ public:
     return v2 + (v1 - v2) * gradient;
   }
 
-  static double gradient(PointF p0, PointF p1, PointF pn)
+   static double gradient(PointI p0, PointI p1, PointI pn)
   {
-    PointF p0p1 = p0 - p1;
-    PointF pnp1 = pn - p1;
+    PointI p0p1 = p0 - p1;
+    PointI pnp1 = pn - p1;
 
     if (abs(p0p1.x_) + abs(p0p1.y_) == 0)
       return 1;
@@ -969,9 +1028,10 @@ public:
     if (pnp1.x_ == p0p1.x_ && pnp1.y_ == p0p1.y_)
       return 1;
 
-    return (abs(pnp1.x_) + abs(pnp1.y_)) / (abs(p0p1.x_) + abs(p0p1.y_));
+    return (abs(pnp1.x_) + abs(pnp1.y_)) * 1.0 / (abs(p0p1.x_) + abs(p0p1.y_)) * 1.0;
   }
 };
+
 
 
 #endif

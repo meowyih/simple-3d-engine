@@ -16,9 +16,9 @@ public:
 
 	Face(PointF pt1, PointF pt2, PointF pt3) : pt1_(pt1), pt2_(pt2), pt3_(pt3) {}
 
-	Face(PointF pt1, PointF pt1n,
-		PointF pt2, PointF pt2n,
-		PointF pt3, PointF pt3n) :
+	Face(PointF pt1, VectorF pt1n,
+		PointF pt2, VectorF pt2n,
+		PointF pt3, VectorF pt3n) :
 		pt1_(pt1), pt2_(pt2), pt3_(pt3),
 		pt1n_(VectorF::normalize(pt1n)),
 		pt2n_(VectorF::normalize(pt2n)),
