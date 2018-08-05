@@ -12,13 +12,17 @@ public:
 
 	PointF(double x, double y, double z) : x_(x), y_(y), z_(z) {}
 
-	PointF(const PointF& rhs) : x_(rhs.x_), y_(rhs.y_), z_(rhs.z_) {}
+  PointF(double x, double y, double z, int_fast32_t u, int_fast32_t v) : x_(x), y_(y), z_(z), u_(u), v_(v) {}
+
+	PointF(const PointF& rhs) : x_(rhs.x_), y_(rhs.y_), z_(rhs.z_), u_(rhs.u_), v_(rhs.v_) {}
 
 	PointF& operator=(const PointF& rhs)
 	{
 		x_ = rhs.x_;
 		y_ = rhs.y_;
 		z_ = rhs.z_;
+    u_ = rhs.u_;
+    v_ = rhs.v_;
 		return *this;
 	}
 
@@ -28,6 +32,12 @@ public:
 		y_ = y;
 		z_ = z;
 	}
+
+  void setuv(int_fast32_t u, int_fast32_t v)
+  {
+    u_ = u;
+    v_ = v;
+  }
 
 	double x() const { return x_; }
 	double y() const { return y_; }
@@ -47,12 +57,15 @@ public:
 	{
 		Matrix<double> lhs_matrix(lhs.x_, lhs.y_, lhs.z_);
 		Matrix<double> result = lhs_matrix * matrix;
-		PointF pt(result.at(0), result.at(1), result.at(2));
+		PointF pt(result.at(0), result.at(1), result.at(2), lhs.u_, lhs.v_);
 		return pt;
 	}
 
 public:
 	double x_, y_, z_;
+
+  // UV coordinate
+  int_fast32_t u_, v_;
 };
 
 

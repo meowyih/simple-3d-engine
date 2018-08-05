@@ -16,13 +16,15 @@ public:
 	PointI(int_fast32_t x, int_fast32_t y, int_fast32_t z) : x_(x), y_(y), z_(z) {}
   PointI(int_fast32_t x, int_fast32_t y, int_fast32_t z, int_fast32_t cos ) : x_(x), y_(y), z_(z), cos_(cos) {}
 
-  PointI(const PointI& rhs) : x_(rhs.x_), y_(rhs.y_), z_(rhs.z_), cos_(rhs.cos_) {}
+  PointI(const PointI& rhs) : x_(rhs.x_), y_(rhs.y_), z_(rhs.z_), cos_(rhs.cos_), u_(rhs.u_), v_(rhs.v_) {}
 
 	PointI(const PointF& ptf)
 	{
 		x_ = (int_fast32_t)round(ptf.x());
 		y_ = (int_fast32_t)round(ptf.y());
 		z_ = (int_fast32_t)round(ptf.z());
+    u_ = ptf.u_;
+    v_ = ptf.v_;
 	}
 
 	int_fast32_t x() const { return x_; }
@@ -52,6 +54,9 @@ public:
   // Phong shading usage, cosine value times 1000
   // this value should between -1000 to 1000
   int_fast32_t cos_; 
+
+  // UV coordinate
+  int_fast32_t u_, v_;
 };
 
 

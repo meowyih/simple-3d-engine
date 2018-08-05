@@ -154,7 +154,11 @@ public:
 
     int_fast32_t x_inc, y_inc, z_inc;
     int_fast32_t cos_cur = pt1.cos_;
-    int_fast32_t delta_cos = pt2.cos_ - pt1.cos_;
+    int_fast32_t delta_cos = pt2.cos_ - pt1.cos_; 
+    int_fast32_t u_cur = pt1.u_;
+    int_fast32_t delta_u = pt2.u_ - pt1.u_;
+    int_fast32_t v_cur = pt1.v_;
+    int_fast32_t delta_v = pt2.v_ - pt1.v_;
 
     x_inc = (delta.x_ < 0) ? -1 : 1;
     y_inc = (delta.y_ < 0) ? -1 : 1;
@@ -165,6 +169,8 @@ public:
       int_fast32_t err_1 = double_delta.y_ - abs_delta.x_;
       int_fast32_t err_2 = double_delta.z_ - abs_delta.x_;
       int_fast32_t cos_inc = ( abs_delta.x_ == 0 ) ? 0 : (delta_cos / abs_delta.x_);
+      int_fast32_t u_inc = (abs_delta.x_ == 0) ? 0 : (delta_u / abs_delta.x_);
+      int_fast32_t v_inc = (abs_delta.x_ == 0) ? 0 : (delta_v / abs_delta.x_);
 
       out.reserve(abs_delta.x_ + 1);
 
@@ -188,8 +194,15 @@ public:
         err_2 += double_delta.z_;
 
         pos.x_ += x_inc;
+
         cos_cur += cos_inc;
         pos.cos_ = cos_cur;
+
+        u_cur += u_inc;
+        pos.u_ = u_cur;
+
+        v_cur += v_inc;
+        pos.v_ = v_cur;
       }
     }
     else if (abs_delta.y_ >= abs_delta.x_ && abs_delta.y_ >= abs_delta.z_)
@@ -197,6 +210,8 @@ public:
       int_fast32_t err_1 = double_delta.x_ - abs_delta.y_;
       int_fast32_t err_2 = double_delta.z_ - abs_delta.y_;
       int_fast32_t cos_inc = (abs_delta.y_ == 0) ? 0 : (delta_cos / abs_delta.y_);
+      int_fast32_t u_inc = (abs_delta.y_ == 0) ? 0 : (delta_u / abs_delta.y_);
+      int_fast32_t v_inc = (abs_delta.y_ == 0) ? 0 : (delta_v / abs_delta.y_);
 
       out.reserve(abs_delta.y_ + 1);
 
@@ -220,8 +235,15 @@ public:
         err_2 += double_delta.z_;
 
         pos.y_ += y_inc;
+
         cos_cur += cos_inc;
         pos.cos_ = cos_cur;
+
+        u_cur += u_inc;
+        pos.u_ = u_cur;
+
+        v_cur += v_inc;
+        pos.v_ = v_cur;
       }
     }
     else
@@ -229,6 +251,8 @@ public:
       int_fast32_t err_1 = double_delta.y_ - abs_delta.z_;
       int_fast32_t err_2 = double_delta.x_ - abs_delta.z_;
       int_fast32_t cos_inc = (abs_delta.z_ == 0) ? 0 : (delta_cos / abs_delta.z_);
+      int_fast32_t u_inc = (abs_delta.z_ == 0) ? 0 : (delta_u / abs_delta.z_);
+      int_fast32_t v_inc = (abs_delta.z_ == 0) ? 0 : (delta_v / abs_delta.z_);
 
       // create a point to store previous PointI in out
       PointI lastpos(pt1);
@@ -266,10 +290,18 @@ public:
         pos.z_ += z_inc;
         cos_cur += cos_inc;
         pos.cos_ = cos_cur;
+
+        u_cur += u_inc;
+        pos.u_ = u_cur;
+
+        v_cur += v_inc;
+        pos.v_ = v_cur;
       }
     }
 
     pos.cos_ = pt2.cos_;
+    pos.u_ = pt2.u_;
+    pos.v_ = pt2.v_;
     out.push_back(pos);
   }
 
@@ -723,16 +755,16 @@ public:
 
     // calculate the cos sita value between line and three vertices
     PointF delta_light_top(
-      light.x_ - top.x_, 
-      light.y_ - top.y_, 
+      light.x_ - top.x_,
+      light.y_ - top.y_,
       light.z_ - top.z_);
     PointF delta_light_middle(
-      light.x_ - middle.x_, 
-      light.y_ - middle.y_, 
+      light.x_ - middle.x_,
+      light.y_ - middle.y_,
       light.z_ - middle.z_);
     PointF delta_light_bottom(
-      light.x_ - bottom.x_, 
-      light.y_ - bottom.y_, 
+      light.x_ - bottom.x_,
+      light.y_ - bottom.y_,
       light.z_ - bottom.z_);
     VectorF top_light = VectorF::normalize(delta_light_top);
     VectorF middle_light = VectorF::normalize(delta_light_middle);
@@ -824,25 +856,16 @@ public:
       while (it2 != vertices_top_middle.end() && it1 != vertices_top_bottom.end())
       {
         // calculate ymax and ymin in x_cur
-        int_fast32_t ymax, ymin, zmax, zmin, cosmax, cosmin;
-        bool ymax_is_it1;
+        PointI min, max;
         if (it1->y_ > it2->y_)
         {
-          ymax = it1->y_;
-          ymin = it2->y_;
-          zmax = it1->z_;
-          zmin = it2->z_;
-          cosmax = it1->cos_;
-          cosmin = it2->cos_;
+          max = *it1;
+          min = *it2;
         }
         else
         {
-          ymax = it2->y_;
-          ymin = it1->y_;
-          zmax = it2->z_;
-          zmin = it1->z_;
-          cosmax = it2->cos_;
-          cosmin = it1->cos_;
+          max = *it2;
+          min = *it1;
         }
 
         // find next it1->x_ == it2->x_ == x_cur
@@ -850,17 +873,13 @@ public:
         {
           if (it1->x_ == x_cur)
           {
-            if (it1->y_ > ymax)
+            if (it1->y_ > max.y_)
             {
-              ymax = it1->y_;
-              zmax = it1->z_;
-              cosmax = it1->cos_;
+              max = *it1;
             }
-            if (it1->y_ < ymin)
+            if (it1->y_ < min.y_)
             {
-              ymin = it1->y_;
-              zmin = it1->z_;
-              cosmin = it1->cos_;
+              min = *it1;
             }
           }
           else // if (it1->x_ == x_cur - 1)
@@ -874,18 +893,13 @@ public:
         {
           if (it2->x_ == x_cur)
           {
-            if (it2->y_ > ymax)
+            if (it2->y_ > max.y_)
             {
-              ymax_is_it1 = false;
-              ymax = it2->y_;
-              zmax = it2->z_;
-              cosmax = it2->cos_;
+              max = *it2;
             }
-            if (it2->y_ < ymin)
+            if (it2->y_ < min.y_)
             {
-              ymin = it2->y_;
-              zmin = it2->z_;
-              cosmin = it2->cos_;
+              min = *it2;
             }
           }
           else // if (it2->x_ == x_cur - 1)
@@ -896,7 +910,7 @@ public:
         }
 
         std::vector<PointI> points;
-        bresenham2d2(PointI(x_cur, ymin, zmin, cosmin), PointI(x_cur, ymax, zmax, cosmax), points);
+        bresenham2d2(max, min, points);
         out.insert(out.end(), points.begin(), points.end());
         x_cur--;
       }
@@ -915,24 +929,16 @@ public:
       while (it3 != vertices_middle_bottom.end() && it1 != vertices_top_bottom.end())
       {
         // calculate ymax and ymin in x_cur
-        int_fast32_t ymax, ymin, zmax, zmin, cosmax, cosmin;
+        PointI max, min;
         if (it1->y_ > it3->y_)
         {
-          ymax = it1->y_;
-          ymin = it3->y_;
-          zmax = it1->z_;
-          zmin = it3->z_;
-          cosmax = it1->cos_;
-          cosmin = it3->cos_;
+          max = *it1;
+          min = *it3;
         }
         else
         {
-          ymax = it3->y_;
-          ymin = it1->y_;
-          zmax = it3->z_;
-          zmin = it1->z_;
-          cosmax = it3->cos_;
-          cosmin = it1->cos_;
+          max = *it3;
+          min = *it1;
         }
 
         // find next it1->x_ == it2->x_ == x_cur
@@ -940,17 +946,13 @@ public:
         {
           if (it1->x_ == x_cur)
           {
-            if (it1->y_ > ymax)
+            if (it1->y_ > max.y_)
             {
-              ymax = it1->y_;
-              zmax = it1->z_;
-              cosmax = it1->cos_;
+              max = *it1;
             }
-            if (it1->y_ < ymin)
+            if (it1->y_ < min.y_)
             {
-              ymin = it1->y_;
-              zmin = it1->z_;
-              cosmin = it1->cos_;
+              min = *it1;
             }
           }
           else // if (it1->x_ == x_cur - 1)
@@ -964,17 +966,13 @@ public:
         {
           if (it3->x_ == x_cur)
           {
-            if (it3->y_ > ymax)
+            if (it3->y_ > max.y_)
             {
-              ymax = it3->y_;
-              zmax = it3->z_;
-              cosmax = it3->cos_;
+              max = *it3;
             }
-            if (it3->y_ < ymin)
+            if (it3->y_ < min.y_)
             {
-              ymin = it3->y_;
-              zmin = it3->z_;
-              cosmin = it3->cos_;
+              min = *it3;
             }
           }
           else // if (it3->x_ == x_cur - 1)
@@ -985,7 +983,7 @@ public:
         }
 
         std::vector<PointI> points;
-        bresenham2d2(PointI(x_cur, ymin, zmin, cosmin), PointI(x_cur, ymax, zmax, cosmax), points);
+        bresenham2d2(max, min, points);
         out.insert(out.end(), points.begin(), points.end());
         x_cur--;
       }

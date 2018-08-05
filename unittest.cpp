@@ -493,7 +493,7 @@ void Sample_5::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
   // memset(zbuffer, 0, sizeof(int_fast32_t) * (width * height));
   for (size_t idx = 0; idx < (size_t)(width * height); idx++)
   {
-    zbuffer[idx] = -999999999;
+    zbuffer[idx] = INT_FAST32_MIN;
   }
 
   // light 
@@ -560,6 +560,149 @@ void Sample_5::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
         buf[anchor] = (int)(255 * cos);
         buf[anchor + 1] = (int)(255 * cos);
         buf[anchor + 2] = (int)(255 * cos);
+      }
+    }
+  }
+
+  delete zbuffer;
+  return;
+}
+
+Sample_6::Sample_6()
+{
+  // read bitmap
+  bitmap_raw_ = NULL;
+  std::ifstream fin("texture.bmp");
+
+  if (fin.good())
+  {
+    unsigned char info[54];
+    fin.read((char*)info, 54);
+
+    bitmap_width_ = *(int32_t*)&info[18];
+    bitmap_height_ = *(int32_t*)&info[22];
+
+    int_fast32_t bitmap_size = 3 * bitmap_width_ * bitmap_height_;
+    bitmap_raw_ = new unsigned char[bitmap_size];
+
+    fin.read((char*)bitmap_raw_, bitmap_size);
+  }
+
+  // vertices for a cube
+  PointF pta(0, 0, 0, 0, 0);
+  PointF ptb(1, 0, 0, 399, 0);
+  PointF ptc(0, 1, 0, 0, 399);
+  PointF ptd(0, 0, 1, 399, 399);
+
+  // non-accurate normal
+  VectorF va(-1, -1, -1);
+  VectorF vb(1, 0, 0);
+  VectorF vc(0, 1, 0);
+  VectorF vd(0, 0, 1);
+
+  Face abc(pta, va, ptb, vb, ptc, vc );
+  Face abd(pta, va, ptb, vd, ptd, vd );
+  Face acd(pta, va, ptc, vc, ptd, vd );
+  Face bcd(ptb, vb, ptc, vc, ptd, vd );
+
+  mesh_.faces_.push_back(abc);
+  mesh_.faces_.push_back(abd);
+  mesh_.faces_.push_back(acd);
+  mesh_.faces_.push_back(bcd);
+
+  rotate_degree_ = 0;
+}
+
+Sample_6::~Sample_6()
+{
+  if (bitmap_raw_ != NULL)
+  {
+    delete[] bitmap_raw_;
+  }
+}
+
+void Sample_6::paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel)
+{
+  // z buffer
+  int_fast32_t* zbuffer = new int_fast32_t[width * height];
+
+  // memset(zbuffer, 0, sizeof(int_fast32_t) * (width * height));
+  for (size_t idx = 0; idx < (size_t)(width * height); idx++)
+  {
+    zbuffer[idx] = INT_FAST32_MIN;
+  }
+
+  // light 
+  PointF light(900, 300, 1000);
+
+  // matrix
+  Matrix<double> scale_matrix(4, 4);
+  Matrix<double> translate_matrix(4, 4);
+  Matrix<double> rotate_matrixX(4, 4);
+  Matrix<double> rotate_matrixY(4, 4);
+  Matrix<double> rotate_matrixZ(4, 4);
+
+  // add one degree each time pain() has been called
+  rotate_degree_ += 1;
+  double radian = (rotate_degree_ % 360) * 2 * pi_ / 360;
+  Utility::set_rotateX(rotate_matrixX, pi_ / 3.0);
+  Utility::set_rotateY(rotate_matrixY, radian);
+  Utility::set_rotateZ(rotate_matrixZ, 0);
+  Utility::set_scale(scale_matrix, 200);
+  Utility::set_translate(translate_matrix, 500, 300, 0);
+
+  // final matrix
+  Matrix<double> world_matrix =
+    scale_matrix * rotate_matrixX * rotate_matrixY * rotate_matrixZ * translate_matrix;
+
+  for (Face fc : mesh_.faces_)
+  {
+    // re-calculate the face vertices
+    Face face = fc * world_matrix;
+    std::vector<PointI> out;
+
+    Utility::rasterize_triangle(
+      light,
+      face.pt1_, face.pt1n_,
+      face.pt2_, face.pt2n_,
+      face.pt3_, face.pt3n_,
+      out);
+
+    for (size_t idx = 0; idx < out.size(); idx++)
+    {
+      PointI pti = out.at(idx);
+      double cos = pti.cos_ * 1.0 / PointI::COS_PRECISENESS;
+      int_fast32_t u = pti.u_, v = pti.v_;
+
+      // ignore the point if outside the screen 
+      if (pti.x_ <= 0 || pti.x_ >= width || pti.y_ <= 0 || pti.y_ >= height)
+      {
+        continue;
+      }
+
+      if (pti.z_ < zbuffer[pti.y_ * width + pti.x_])
+      {
+        continue;
+      }
+      else
+      {
+        zbuffer[pti.y_ * width + pti.x_] = pti.z_;
+      }
+
+      // draw a white point RGB(255, 255, 255) on x and y 
+      int buffer_anchor = (pti.y_ * width + pti.x_) * bytePerPixel;
+      int bitmap_anchor = (v * bitmap_width_ + u) * 3;
+
+      if (cos > 0)
+      {
+        if (bitmap_raw_ == NULL)
+        {
+          continue;
+        }
+
+        buf[buffer_anchor] = (int)(bitmap_raw_[bitmap_anchor] * cos);
+        buf[buffer_anchor+1] = (int)(bitmap_raw_[bitmap_anchor+1] * cos);
+        buf[buffer_anchor+2] = (int)(bitmap_raw_[bitmap_anchor+2] * cos);
       }
     }
   }

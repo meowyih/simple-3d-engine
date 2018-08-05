@@ -71,11 +71,11 @@ public:
 		Matrix<double> pt3n_trans_matrix = pt3n_matrix * rhs;
 
 		return Face(
-			PointF(pt1_trans_matrix.at(0), pt1_trans_matrix.at(1), pt1_trans_matrix.at(2)),
+			PointF(pt1_trans_matrix.at(0), pt1_trans_matrix.at(1), pt1_trans_matrix.at(2), lhs.pt1_.u_, lhs.pt1_.v_),
 			VectorF(pt1n_trans_matrix.at(0), pt1n_trans_matrix.at(1), pt1n_trans_matrix.at(2)),
-			PointF(pt2_trans_matrix.at(0), pt2_trans_matrix.at(1), pt2_trans_matrix.at(2)),
+			PointF(pt2_trans_matrix.at(0), pt2_trans_matrix.at(1), pt2_trans_matrix.at(2), lhs.pt2_.u_, lhs.pt2_.v_),
 			VectorF(pt2n_trans_matrix.at(0), pt2n_trans_matrix.at(1), pt2n_trans_matrix.at(2)),
-			PointF(pt3_trans_matrix.at(0), pt3_trans_matrix.at(1), pt3_trans_matrix.at(2)),
+			PointF(pt3_trans_matrix.at(0), pt3_trans_matrix.at(1), pt3_trans_matrix.at(2), lhs.pt3_.u_, lhs.pt3_.v_),
 			VectorF(pt3n_trans_matrix.at(0), pt3n_trans_matrix.at(1), pt3n_trans_matrix.at(2))
 		);
 

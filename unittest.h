@@ -158,3 +158,37 @@ private:
   unsigned int rotate_degree_ = 0;
   Mesh mesh_;
 };
+
+class Sample_6
+{
+private:
+  double pi_ = 3.1415926;
+
+public:
+
+  //Singleton
+  static Sample_6& get_instance()
+  {
+    static Sample_6 instance;
+    return instance;
+  }
+
+  // avoid accidentally copy
+  Sample_6(Sample_6 const&) = delete;
+  void operator = (Sample_6 const&) = delete;
+
+  // paint
+  void paintMesh(BYTE* buf, LONG width, LONG height, WORD bytePerPixel);
+
+private:
+  Sample_6();
+  ~Sample_6();
+
+private:
+  unsigned int rotate_degree_ = 0;
+  Mesh mesh_;
+
+  int32_t bitmap_width_, bitmap_height_;
+  unsigned char *bitmap_raw_;
+
+};
